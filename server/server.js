@@ -8,7 +8,11 @@ const PORT = process.env.PORT || 5002; // <--- MAKE SURE THIS IS 5002 if your fr
 
 // --- Middleware ---
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'YOUR_FRONTEND_LIVE_URL', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true 
+}));
 
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
