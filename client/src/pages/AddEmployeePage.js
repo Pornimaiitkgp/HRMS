@@ -51,7 +51,7 @@ function AddEmployeePage() {
       };
       // Fetch users who are 'manager' or 'hr_admin' to be potential managers
       // You might need a dedicated API endpoint for this if user list is huge
-      const { data } = await axios.get('http://localhost:5002/api/auth/users', config); // Assuming you'll add an API to get users
+      const { data } = await axios.get('${API_BASE_URL}/api/auth/users', config); // Assuming you'll add an API to get users
       const validManagers = data.filter(user => user.role === 'manager' || user.role === 'hr_admin');
       setManagers(validManagers);
     } catch (err) {
@@ -80,7 +80,7 @@ function AddEmployeePage() {
           'Content-Type': 'application/json',
         },
       };
-      await axios.post('http://localhost:5002/api/employees', formData, config);
+      await axios.post('${API_BASE_URL}/api/employees', formData, config);
       setSuccess('Employee added successfully!');
       setFormData({ // Clear form after success
         employeeId: '', firstName: '', lastName: '', email: '', phone: '',

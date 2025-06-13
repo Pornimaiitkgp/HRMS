@@ -29,6 +29,7 @@ function EmployeeDetailsPage() {
   const isAdmin = userInfo?.role === 'hr_admin';
   const isManager = userInfo?.role === 'manager';
   const isSelf = userInfo && userInfo.id === id; // Check if the user is viewing their own profile
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
 
   useEffect(() => {
     if (!userInfo || !userInfo.token) {
@@ -50,7 +51,7 @@ function EmployeeDetailsPage() {
           Authorization: `Bearer ${userInfo.token}`,
         },
       };
-      const { data } = await axios.get(`http://localhost:5002/api/employees/${id}`, config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/employees/${id}`, config);
       setEmployee(data);
       // Pre-fill form data for editing (format date for input[type="date"])
       setFormData({
@@ -77,7 +78,7 @@ function EmployeeDetailsPage() {
           Authorization: `Bearer ${userInfo.token}`,
         },
       };
-      const { data } = await axios.get('http://localhost:5002/api/auth/users', config);
+      const { data } = await axios.get('${API_BASE_URL}/api/auth/users', config);
       const validManagers = data.filter(user => user.role === 'manager' || user.role === 'hr_admin');
       setManagers(validManagers);
     } catch (err) {
@@ -108,7 +109,7 @@ function EmployeeDetailsPage() {
         },
       };
       // Only send updated fields, or all fields if isEditMode is true
-      const { data } = await axios.put(`http://localhost:5002/api/employees/${id}`, formData, config);
+      const { data } = await axios.put(`${API_BASE_URL}/api/employees/${id}`, formData, config);
       setEmployee(data); // Update displayed employee data
       setSuccess('Employee details updated successfully!');
       setIsEditMode(false); // Exit edit mode

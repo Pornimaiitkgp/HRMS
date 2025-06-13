@@ -9,6 +9,7 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +17,7 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post('http://localhost:5002/api/auth/login', { email, password });
+      const { data } = await axios.post('${API_BASE_URL}/api/auth/login', { email, password });
       localStorage.setItem('userInfo', JSON.stringify(data)); // Store user info and token
       navigate('/dashboard'); // Redirect to dashboard on success
     } catch (err) {

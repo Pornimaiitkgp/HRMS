@@ -21,8 +21,9 @@ function DashboardPage() {
   const isAdmin = userInfo?.role === 'hr_admin';
   const isManager = userInfo?.role === 'manager';
   const isEmployee = userInfo?.role === 'employee'; // This variable `isEmployee` is used later in JSX for conditional rendering, so it's not actually unused. The ESLint warning might be misleading here or the usage is subtle. We'll keep it.
-
   // Moved fetchDashboardData outside useEffect or memoized it to resolve dependency warning
+
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
   const fetchDashboardData = React.useCallback(async (token, role) => { // Use useCallback
     setLoading(true);
     setError('');
@@ -35,13 +36,13 @@ function DashboardPage() {
 
       // Fetch overall employee stats (HR Admin only)
       if (role === 'hr_admin') {
-        const employeeRes = await axios.get('http://localhost:5002/api/employees', config);
+        const employeeRes = await axios.get('${API_BASE_URL}/api/employees', config);
         const activeEmployees = employeeRes.data.filter(emp => emp.status === 'active').length;
         setStats(prev => ({ ...prev, totalEmployees: activeEmployees }));
       }
 
       // Fetch leaves for HR Admin / Manager / Employee
-      const leaveRes = await axios.get('http://localhost:5002/api/leaves', config);
+      const leaveRes = await axios.get('${API_BASE_URL}/api/leaves', config);
       const pending = leaveRes.data.filter(l => l.status === 'pending').length;
       const approved = leaveRes.data.filter(l => l.status === 'approved').length;
       setStats(prev => ({ ...prev, pendingLeaves: pending, approvedLeaves: approved }));

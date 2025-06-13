@@ -30,6 +30,7 @@ function EmployeesPage() {
   const userInfoString = localStorage.getItem('userInfo');
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
   const isAdmin = userInfo?.role === 'hr_admin';
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
 
   useEffect(() => {
     if (!userInfo || !userInfo.token) {
@@ -48,7 +49,7 @@ function EmployeesPage() {
           Authorization: `Bearer ${userInfo.token}`,
         },
       };
-      const { data } = await axios.get('http://localhost:5002/api/employees', config);
+      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
       setEmployees(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees. Access denied.');
@@ -93,7 +94,7 @@ function EmployeesPage() {
           Authorization: `Bearer ${userInfo.token}`,
         },
       };
-      await axios.delete(`http://localhost:5002/api/employees/${employeeToDelete._id}`, config);
+      await axios.delete(`${API_BASE_URL}/api/employees/${employeeToDelete._id}`, config);
       setEmployees(employees.filter(emp => emp._id !== employeeToDelete._id));
       setEmployeeToDelete(null); // Clear employee to delete
       // Optionally show a success message

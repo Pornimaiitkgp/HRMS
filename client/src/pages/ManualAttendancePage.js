@@ -34,6 +34,8 @@ function ManualAttendancePage() {
 
   const isAdmin = userInfo?.role === 'hr_admin';
 
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+
   // Redirect if not admin
   useEffect(() => {
     if (!userInfo || !userInfo.token || !isAdmin) {
@@ -50,7 +52,7 @@ function ManualAttendancePage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('http://localhost:5002/api/employees', config);
+      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
       setEmployees(data);
       // Pre-select first employee if none is selected, OR if the current formData.employee is invalid/not in list
       if (data.length > 0 && (!formData.employee || !data.some(emp => emp._id === formData.employee))) {
@@ -74,7 +76,7 @@ function ManualAttendancePage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get(`http://localhost:5002/api/attendance/employee/${employeeId}`, config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/attendance/employee/${employeeId}`, config);
       setAttendanceRecords(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch attendance for selected employee.');
@@ -130,7 +132,7 @@ function ManualAttendancePage() {
       };
 
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      await axios.post('http://localhost:5002/api/attendance/manual', payload, config);
+      await axios.post('${API_BASE_URL}/api/attendance/manual', payload, config);
       setSuccess('Attendance record added/updated successfully!');
       // Clear form except employee selection if HR
       setFormData(prev => ({

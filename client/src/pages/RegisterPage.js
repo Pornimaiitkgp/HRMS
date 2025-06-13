@@ -30,7 +30,7 @@ function RegisterPage() {
     }
 
     try {
-      const { data } = await axios.post('http://localhost:5002/api/auth/register', { name, email, password, role });
+      const { data } = await axios.post('${API_BASE_URL}/api/auth/register', { name, email, password, role });
       setSuccess(`User "${data.name}" created successfully!`);
       // Optionally, redirect to login or clear form
       setName('');

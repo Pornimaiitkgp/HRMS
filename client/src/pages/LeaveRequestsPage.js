@@ -25,6 +25,8 @@ function LeaveRequestsPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+
   const userInfoString = localStorage.getItem('userInfo');
   // Use useMemo to stabilize userInfo object reference
   const userInfo = useMemo(() => {
@@ -45,7 +47,7 @@ function LeaveRequestsPage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('http://localhost:5002/api/leaves', config);
+      const { data } = await axios.get('${API_BASE_URL}/api/leaves', config);
       // Sort by appliedDate, newest first
       const sortedData = data.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate));
       setLeaves(sortedData);
@@ -96,7 +98,7 @@ function LeaveRequestsPage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      await axios.put(`http://localhost:5002/api/leaves/${leaveId}/status`, { status: newStatus }, config);
+      await axios.put(`${API_BASE_URL}/api/leaves/${leaveId}/status`, { status: newStatus }, config);
       fetchLeaves();
     } catch (err) {
       setError(err.response?.data?.message || `Failed to update leave status to ${newStatus}.`);

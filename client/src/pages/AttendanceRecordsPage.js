@@ -19,6 +19,7 @@ function AttendanceRecordsPage() {
 
   const theme = useTheme();
   const navigate = useNavigate();
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
 
   const userInfoString = localStorage.getItem('userInfo');
   const userInfo = useMemo(() => {
@@ -38,8 +39,8 @@ function AttendanceRecordsPage() {
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
       const url = isAdmin
-        ? 'http://localhost:5002/api/attendance' // HR Admin fetches all
-        : `http://localhost:5002/api/attendance/employee/${userInfo.employeeProfile}`; // Employee fetches their own
+        ? '${API_BASE_URL}/api/attendance' // HR Admin fetches all
+        : `${API_BASE_URL}/api/attendance/employee/${userInfo.employeeProfile}`; // Employee fetches their own
 
       const { data } = await axios.get(url, config);
       // Sort by date, newest first

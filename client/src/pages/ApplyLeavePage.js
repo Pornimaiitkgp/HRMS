@@ -41,7 +41,7 @@ function ApplyLeavePage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('http://localhost:5002/api/employees', config);
+      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
       setEmployees(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees for selection.');
@@ -100,7 +100,7 @@ function ApplyLeavePage() {
         },
       };
       // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      await axios.post('http://localhost:5002/api/leaves', formData, config);
+      await axios.post('${API_BASE_URL}/api/leaves', formData, config);
       setSuccess('Leave request submitted successfully!');
       setFormData({ // Clear form, but keep employee if not HR
         employee: isAdmin ? '' : formData.employee, // Retain pre-filled employee for non-admins
