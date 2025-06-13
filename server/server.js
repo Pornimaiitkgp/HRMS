@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 5002; // <--- MAKE SURE THIS IS 5002 if your fr
 // --- Middleware ---
 app.use(express.json());
 app.use(cors({
-  origin: 'YOUR_FRONTEND_LIVE_URL', 
+  origin: 'https://hrms-8vuhxuo9d-pornima-gaikwads-projects.vercel.app', 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true 
 }));
