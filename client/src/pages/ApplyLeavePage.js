@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo import
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Typography, TextField, Button, Paper, Alert, CircularProgress,
   FormControl, InputLabel, Select, MenuItem
@@ -27,9 +27,12 @@ function ApplyLeavePage() {
   const userInfoString = localStorage.getItem('userInfo');
   const userInfo = useMemo(() => {
     return userInfoString ? JSON.parse(userInfoString) : null;
-  }, [userInfoString]); // Only re-parse if the userInfoString from localStorage changes
+  }, [userInfoString]);
 
   const isAdmin = userInfo?.role === 'hr_admin';
+
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
   // Wrapped fetchEmployeesForSelection in useCallback
   const fetchEmployeesForSelection = useCallback(async () => {
@@ -37,11 +40,10 @@ function ApplyLeavePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/employees`, config);
       setEmployees(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees for selection.');
@@ -49,7 +51,7 @@ function ApplyLeavePage() {
     } finally {
       setFetchEmployeesLoading(false);
     }
-  }, [userInfo]); // userInfo is a dependency for fetchEmployeesForSelection
+  }, [API_BASE_URL, userInfo?.token]); // Dependency: API_BASE_URL and userInfo.token
 
   useEffect(() => {
     if (!userInfo || !userInfo.token) {
@@ -70,7 +72,7 @@ function ApplyLeavePage() {
     if (isAdmin) {
       fetchEmployeesForSelection();
     }
-  }, [userInfo, navigate, isAdmin, formData.employee, fetchEmployeesForSelection]); // Added formData.employee to dependency array
+  }, [userInfo, navigate, isAdmin, formData.employee, fetchEmployeesForSelection]); // API_BASE_URL is not directly used here, it's a dependency of fetchEmployeesForSelection
 
 
   const handleChange = (e) => {
@@ -95,12 +97,11 @@ function ApplyLeavePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
           'Content-Type': 'application/json',
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      await axios.post('${API_BASE_URL}/api/leaves', formData, config);
+      await axios.post(`${API_BASE_URL}/api/leaves`, formData, config);
       setSuccess('Leave request submitted successfully!');
       setFormData({ // Clear form, but keep employee if not HR
         employee: isAdmin ? '' : formData.employee, // Retain pre-filled employee for non-admins

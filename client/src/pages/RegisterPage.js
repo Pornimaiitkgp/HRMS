@@ -12,7 +12,10 @@ function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // This variable will now be used
+
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
   // In a real application, you'd likely fetch roles from an API
   const roles = ['employee', 'manager', 'hr_admin'];
@@ -30,14 +33,17 @@ function RegisterPage() {
     }
 
     try {
-      const { data } = await axios.post('${API_BASE_URL}/api/auth/register', { name, email, password, role });
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password, role });
       setSuccess(`User "${data.name}" created successfully!`);
-      // Optionally, redirect to login or clear form
+      // Clear form after success
       setName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
       setRole('employee');
+
+      // Redirect to login page after successful registration
+      navigate('/login'); // FIX: Use navigate here to resolve no-unused-vars warning
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
       console.error('Registration error:', err);

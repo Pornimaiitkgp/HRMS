@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo import
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, CircularProgress, Alert, Button,
@@ -25,13 +25,14 @@ function LeaveRequestsPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
   const userInfoString = localStorage.getItem('userInfo');
   // Use useMemo to stabilize userInfo object reference
   const userInfo = useMemo(() => {
     return userInfoString ? JSON.parse(userInfoString) : null;
-  }, [userInfoString]); // Only re-parse if the userInfoString from localStorage changes
+  }, [userInfoString]);
 
   const isAdmin = userInfo?.role === 'hr_admin';
   const isManager = userInfo?.role === 'manager';
@@ -43,11 +44,10 @@ function LeaveRequestsPage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('${API_BASE_URL}/api/leaves', config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/leaves`, config);
       // Sort by appliedDate, newest first
       const sortedData = data.sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate));
       setLeaves(sortedData);
@@ -61,7 +61,7 @@ function LeaveRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [userInfo, navigate]); // userInfo and navigate are stable now
+  }, [API_BASE_URL, userInfo?.token, navigate]); // ADD API_BASE_URL and userInfo?.token to dependencies
 
   useEffect(() => {
     // Only proceed if userInfo is available and valid
@@ -93,13 +93,12 @@ function LeaveRequestsPage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
           'Content-Type': 'application/json',
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
       await axios.put(`${API_BASE_URL}/api/leaves/${leaveId}/status`, { status: newStatus }, config);
-      fetchLeaves();
+      fetchLeaves(); // Re-fetch leaves to update the UI
     } catch (err) {
       setError(err.response?.data?.message || `Failed to update leave status to ${newStatus}.`);
       console.error('Error updating leave status:', err);
@@ -167,6 +166,15 @@ function LeaveRequestsPage() {
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
           <CircularProgress /> {/* Or a redirect message */}
         </Box>
+      );
+  }
+
+  // If not authorized after loading, display an alert
+  if (!isAdmin && !isManager && !loading) {
+      return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
+              <Alert severity="warning">You are not authorized to view this page.</Alert>
+          </Box>
       );
   }
 
@@ -270,7 +278,7 @@ function LeaveRequestsPage() {
                             </Button>
                           </>
                         )}
-                        {leave.status === 'approved' && (isAdmin || isManager) && (
+                        {leave.status === 'approved' && (
                             <Button
                                 variant="outlined"
                                 color="info"

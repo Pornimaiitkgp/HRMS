@@ -19,7 +19,9 @@ function AttendanceRecordsPage() {
 
   const theme = useTheme();
   const navigate = useNavigate();
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
   const userInfoString = localStorage.getItem('userInfo');
   const userInfo = useMemo(() => {
@@ -34,13 +36,12 @@ function AttendanceRecordsPage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
       const url = isAdmin
-        ? '${API_BASE_URL}/api/attendance' // HR Admin fetches all
-        : `${API_BASE_URL}/api/attendance/employee/${userInfo.employeeProfile}`; // Employee fetches their own
+        ? `${API_BASE_URL}/api/attendance` // HR Admin fetches all
+        : `${API_BASE_URL}/api/attendance/employee/${userInfo?.employeeProfile}`; // Employee fetches their own (use optional chaining)
 
       const { data } = await axios.get(url, config);
       // Sort by date, newest first
@@ -56,7 +57,7 @@ function AttendanceRecordsPage() {
     } finally {
       setLoading(false);
     }
-  }, [userInfo, navigate, isAdmin]);
+  }, [API_BASE_URL, userInfo, navigate, isAdmin]); // API_BASE_URL is already here, good!
 
   useEffect(() => {
     if (!userInfo || !userInfo.token) {
@@ -70,7 +71,7 @@ function AttendanceRecordsPage() {
       return;
     }
     fetchAttendanceRecords();
-  }, [fetchAttendanceRecords, navigate, userInfo, isAdmin]);
+  }, [fetchAttendanceRecords, navigate, userInfo, isAdmin]); // API_BASE_URL is a dependency of fetchAttendanceRecords, so no need to repeat it here
 
 
   const handleSearchChange = (event) => {
@@ -104,6 +105,8 @@ function AttendanceRecordsPage() {
     );
   }
 
+  // This check for userInfo being null might be redundant if the useEffect at the top handles redirecting
+  // but keeping it for robustness if the userInfo state update lags.
   if (!userInfo) {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
@@ -171,14 +174,17 @@ function AttendanceRecordsPage() {
                       </TableCell>
                     )}
                     <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : 'N/A'}</TableCell>
-                    <TableCell>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : 'N/A'}</TableCell>
+                    {/* FIX: Changed record.checkIn to record.checkInTime */}
+                    <TableCell>{record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : 'N/A'}</TableCell>
+                    {/* FIX: Changed record.checkOut to record.checkOutTime */}
+                    <TableCell>{record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : 'N/A'}</TableCell>
                     <TableCell>
-                      {record.checkIn && record.checkOut
+                      {/* FIX: Changed record.checkIn and record.checkOut to record.checkInTime and record.checkOutTime */}
+                      {record.checkInTime && record.checkOutTime
                         ? // Calculate duration in hours and minutes
                           (() => {
-                              const checkInTime = new Date(record.checkIn);
-                              const checkOutTime = new Date(record.checkOut);
+                              const checkInTime = new Date(record.checkInTime);
+                              const checkOutTime = new Date(record.checkOutTime);
                               const durationMs = checkOutTime - checkInTime;
                               const hours = Math.floor(durationMs / (1000 * 60 * 60));
                               const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));

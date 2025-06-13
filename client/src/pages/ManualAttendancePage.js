@@ -34,9 +34,10 @@ function ManualAttendancePage() {
 
   const isAdmin = userInfo?.role === 'hr_admin';
 
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust port if needed
 
-  // Redirect if not admin
+  // Redirect if not admin or not logged in
   useEffect(() => {
     if (!userInfo || !userInfo.token || !isAdmin) {
       navigate('/login');
@@ -48,11 +49,10 @@ function ManualAttendancePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/employees`, config);
       setEmployees(data);
       // Pre-select first employee if none is selected, OR if the current formData.employee is invalid/not in list
       if (data.length > 0 && (!formData.employee || !data.some(emp => emp._id === formData.employee))) {
@@ -64,7 +64,7 @@ function ManualAttendancePage() {
     } finally {
       setFetchEmployeesLoading(false);
     }
-  }, [userInfo, formData.employee]); // Added formData.employee as dependency to ensure initial selection stability
+  }, [API_BASE_URL, userInfo?.token, formData.employee]); // Added API_BASE_URL and userInfo?.token to dependencies
 
   const fetchAttendanceByEmployee = useCallback(async (employeeId) => {
     setLoading(true);
@@ -72,10 +72,9 @@ function ManualAttendancePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
         },
       };
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
       const { data } = await axios.get(`${API_BASE_URL}/api/attendance/employee/${employeeId}`, config);
       setAttendanceRecords(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (err) {
@@ -84,17 +83,17 @@ function ManualAttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [userInfo]);
+  }, [API_BASE_URL, userInfo?.token]); // Added API_BASE_URL and userInfo?.token to dependencies
 
 
   useEffect(() => {
-    if (isAdmin && userInfo?.token) {
+    if (isAdmin && userInfo?.token) { // Only fetch if admin and token available
       fetchEmployeesForSelection();
     }
-  }, [isAdmin, userInfo, fetchEmployeesForSelection]);
+  }, [isAdmin, userInfo?.token, fetchEmployeesForSelection]); // userInfo.token as dependency
 
   useEffect(() => {
-    if (isAdmin && formData.employee) {
+    if (isAdmin && formData.employee) { // Only fetch if admin and employee is selected
       fetchAttendanceByEmployee(formData.employee);
     }
   }, [isAdmin, formData.employee, fetchAttendanceByEmployee]);
@@ -119,7 +118,7 @@ function ManualAttendancePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
           'Content-Type': 'application/json',
         },
       };
@@ -131,10 +130,9 @@ function ManualAttendancePage() {
         checkOut: formData.checkOut ? `${formData.date}T${formData.checkOut}:00` : undefined,
       };
 
-      // CHECK THIS PORT: It should be your backend's port (e.g., 5002)
-      await axios.post('${API_BASE_URL}/api/attendance/manual', payload, config);
+      await axios.post(`${API_BASE_URL}/api/attendance/manual`, payload, config);
       setSuccess('Attendance record added/updated successfully!');
-      // Clear form except employee selection if HR
+      // Clear form except employee selection
       setFormData(prev => ({
         ...prev,
         date: '',
@@ -164,13 +162,23 @@ function ManualAttendancePage() {
 
   const displayedAttendance = attendanceRecords.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-  if (!userInfo || !isAdmin) { // Check isAdmin after userInfo is available
+  // Show loading or unauthorized message early
+  if (loading || fetchEmployeesLoading || !userInfo) { // Added !userInfo to initial check
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAdmin) { // After loading, if not admin, show unauthorized
       return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
-          <CircularProgress />
-        </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
+              <Alert severity="warning">You are not authorized to view this page.</Alert>
+          </Box>
       );
   }
+
 
   return (
     <Box sx={{ p: 4, bgcolor: theme.palette.background.default, minHeight: '100vh' }}>

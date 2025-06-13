@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react'; // ADD useCallback here if not already
 import {
-  Box, Typography, /* Paper, */ CircularProgress, Alert, Grid, Card, CardContent, /* CardMedia, */ Button // ADDED Button here
+  Box, Typography, /* Paper, */ CircularProgress, Alert, Grid, Card, CardContent, /* CardMedia, */ Button
 } from '@mui/material';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -18,13 +18,15 @@ function DashboardPage() {
   const navigate = useNavigate();
   const theme = useTheme();
 
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
+
   const isAdmin = userInfo?.role === 'hr_admin';
   const isManager = userInfo?.role === 'manager';
-  const isEmployee = userInfo?.role === 'employee'; // This variable `isEmployee` is used later in JSX for conditional rendering, so it's not actually unused. The ESLint warning might be misleading here or the usage is subtle. We'll keep it.
-  // Moved fetchDashboardData outside useEffect or memoized it to resolve dependency warning
+  // isEmployee is used in JSX, so it's fine.
+  // const isEmployee = userInfo?.role === 'employee';
 
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
-  const fetchDashboardData = React.useCallback(async (token, role) => { // Use useCallback
+  const fetchDashboardData = useCallback(async (token, role) => { // Use useCallback
     setLoading(true);
     setError('');
     try {
@@ -36,13 +38,15 @@ function DashboardPage() {
 
       // Fetch overall employee stats (HR Admin only)
       if (role === 'hr_admin') {
-        const employeeRes = await axios.get('${API_BASE_URL}/api/employees', config);
+        const employeeRes = await axios.get(`${API_BASE_URL}/api/employees`, config);
         const activeEmployees = employeeRes.data.filter(emp => emp.status === 'active').length;
         setStats(prev => ({ ...prev, totalEmployees: activeEmployees }));
       }
 
       // Fetch leaves for HR Admin / Manager / Employee
-      const leaveRes = await axios.get('${API_BASE_URL}/api/leaves', config);
+      // Adjust this endpoint if employees only see *their own* leaves
+      // For a general dashboard, this is fine, assuming backend handles permissions
+      const leaveRes = await axios.get(`${API_BASE_URL}/api/leaves`, config);
       const pending = leaveRes.data.filter(l => l.status === 'pending').length;
       const approved = leaveRes.data.filter(l => l.status === 'approved').length;
       setStats(prev => ({ ...prev, pendingLeaves: pending, approvedLeaves: approved }));
@@ -57,19 +61,18 @@ function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [navigate]); // Add navigate to useCallback dependencies
+  }, [API_BASE_URL, navigate]); // ADD API_BASE_URL to useCallback dependencies
 
   useEffect(() => {
     const storedUserInfo = localStorage.getItem('userInfo');
     if (storedUserInfo) {
       const parsedUserInfo = JSON.parse(storedUserInfo);
       setUserInfo(parsedUserInfo);
-      // Now fetchDashboardData is a stable function reference due to useCallback
       fetchDashboardData(parsedUserInfo.token, parsedUserInfo.role);
     } else {
       navigate('/login');
     }
-  }, [navigate, fetchDashboardData]); // Added fetchDashboardData to dependency array
+  }, [navigate, fetchDashboardData]); // fetchDashboardData is already here, good!
 
   if (loading) {
     return (
@@ -90,6 +93,9 @@ function DashboardPage() {
   if (!userInfo) {
       return null;
   }
+
+  // Define isEmployee here, after userInfo is guaranteed to be not null
+  const isEmployee = userInfo.role === 'employee';
 
   return (
     <Box sx={{ p: 4, bgcolor: theme.palette.background.default, minHeight: '100vh' }}>

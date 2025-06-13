@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // ADD useCallback here
 import {
   Box, Typography, TextField, Button, Paper, Alert, CircularProgress,
   FormControl, InputLabel, Select, MenuItem
@@ -33,25 +33,20 @@ function AddEmployeePage() {
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
   const isAdmin = userInfo?.role === 'hr_admin';
 
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate('/dashboard'); // Redirect if not HR Admin
-      return;
-    }
-    fetchManagers();
-  }, [isAdmin, navigate]);
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
-  const fetchManagers = async () => {
+  // Wrap fetchManagers in useCallback to prevent re-creation on every render
+  // and add its dependencies
+  const fetchManagers = useCallback(async () => {
     setFetchManagersLoading(true);
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
-      // Fetch users who are 'manager' or 'hr_admin' to be potential managers
-      // You might need a dedicated API endpoint for this if user list is huge
-      const { data } = await axios.get('${API_BASE_URL}/api/auth/users', config); // Assuming you'll add an API to get users
+      const { data } = await axios.get(`${API_BASE_URL}/api/auth/users`, config);
       const validManagers = data.filter(user => user.role === 'manager' || user.role === 'hr_admin');
       setManagers(validManagers);
     } catch (err) {
@@ -60,7 +55,15 @@ function AddEmployeePage() {
     } finally {
       setFetchManagersLoading(false);
     }
-  };
+  }, [API_BASE_URL, userInfo?.token]); // Dependencies for useCallback
+
+  useEffect(() => {
+    if (!isAdmin) {
+      navigate('/dashboard'); // Redirect if not HR Admin
+      return;
+    }
+    fetchManagers();
+  }, [isAdmin, navigate, fetchManagers]); // ADD fetchManagers to useEffect dependencies
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -76,11 +79,11 @@ function AddEmployeePage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
           'Content-Type': 'application/json',
         },
       };
-      await axios.post('${API_BASE_URL}/api/employees', formData, config);
+      await axios.post(`${API_BASE_URL}/api/employees`, formData, config);
       setSuccess('Employee added successfully!');
       setFormData({ // Clear form after success
         employeeId: '', firstName: '', lastName: '', email: '', phone: '',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // ADD useCallback, useMemo
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, CircularProgress, Alert, Button, IconButton,
@@ -28,28 +28,25 @@ function EmployeesPage() {
 
   // Get user info from localStorage to check role for authorization
   const userInfoString = localStorage.getItem('userInfo');
-  const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+  const userInfo = useMemo(() => { // Wrap userInfo parsing in useMemo
+    return userInfoString ? JSON.parse(userInfoString) : null;
+  }, [userInfoString]); // Only re-parse if the raw string changes
+
   const isAdmin = userInfo?.role === 'hr_admin';
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
-  useEffect(() => {
-    if (!userInfo || !userInfo.token) {
-      navigate('/login'); // Redirect to login if not authenticated
-      return;
-    }
-    fetchEmployees();
-  }, [navigate, userInfo?.token]); // Dependency array: re-fetch if token changes
-
-  const fetchEmployees = async () => {
+  // Wrap fetchEmployees in useCallback to make it a stable function reference
+  const fetchEmployees = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
-      const { data } = await axios.get('${API_BASE_URL}/api/employees', config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/employees`, config);
       setEmployees(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees. Access denied.');
@@ -61,7 +58,19 @@ function EmployeesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL, userInfo?.token, navigate]); // Dependencies for useCallback
+
+  useEffect(() => {
+    // Only proceed if userInfo is available and token exists
+    // The previous check `!userInfo || !userInfo.token` is sufficient.
+    if (!userInfo?.token) { // Use optional chaining for conciseness
+      navigate('/login'); // Redirect to login if not authenticated
+      return;
+    }
+    // Now fetchEmployees is a stable function, so adding it to deps is safe.
+    fetchEmployees();
+  }, [fetchEmployees, navigate, userInfo?.token]); // ADD fetchEmployees, navigate, userInfo?.token here
+
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -91,9 +100,11 @@ function EmployeesPage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`, // Use optional chaining for userInfo.token
         },
       };
+      // NOTE: Your backend should handle deactivation (setting status to 'terminated')
+      // rather than actual deletion if you want to retain historical data.
       await axios.delete(`${API_BASE_URL}/api/employees/${employeeToDelete._id}`, config);
       setEmployees(employees.filter(emp => emp._id !== employeeToDelete._id));
       setEmployeeToDelete(null); // Clear employee to delete
@@ -122,13 +133,24 @@ function EmployeesPage() {
   // Avoid slice if filteredEmployees is empty
   const displayedEmployees = filteredEmployees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-  if (loading) {
+  // Moved initial loading check here for better UX
+  if (loading && employees.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
         <CircularProgress />
       </Box>
     );
   }
+
+  // If not admin, and loading is finished, display authorization error
+  if (!isAdmin && !loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
+        <Alert severity="warning">You are not authorized to view this page.</Alert>
+      </Box>
+    );
+  }
+
 
   return (
     <Box sx={{ p: 4, bgcolor: theme.palette.background.default, minHeight: '100vh' }}>

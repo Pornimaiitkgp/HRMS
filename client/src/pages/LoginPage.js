@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Paper, Alert } from '@mui/material';
-import { useNavigate } from 'react-router-dom'; // For navigation
-import axios from 'axios'; // For API calls
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -9,7 +9,9 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+
+  // Ensure API_BASE_URL has a fallback for local development
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Adjust 5000 if your local backend runs on a different port (e.g., 5002)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,7 +19,7 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post('${API_BASE_URL}/api/auth/login', { email, password });
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
       localStorage.setItem('userInfo', JSON.stringify(data)); // Store user info and token
       navigate('/dashboard'); // Redirect to dashboard on success
     } catch (err) {

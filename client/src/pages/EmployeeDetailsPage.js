@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import IconButton from '@mui/material/IconButton';
 
 import {
   Box, Typography, Paper, Grid, TextField, Button, Alert, CircularProgress,
   FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles'; // Corrected import for useTheme
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -25,60 +25,52 @@ function EmployeeDetailsPage() {
   const [isEditMode, setIsEditMode] = useState(false); // To toggle between view and edit
 
   const userInfoString = localStorage.getItem('userInfo');
-  const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+  const userInfo = useMemo(() => {
+    return userInfoString ? JSON.parse(userInfoString) : null;
+  }, [userInfoString]);
+
   const isAdmin = userInfo?.role === 'hr_admin';
   const isManager = userInfo?.role === 'manager';
-  const isSelf = userInfo && userInfo.id === id; // Check if the user is viewing their own profile
-  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL
+  // FIX: Corrected the isSelf check to use `employeeProfile` ID for comparison
+  const isSelf = userInfo && userInfo.role === 'employee' && userInfo.employeeProfile === id;
+  const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'; // Added fallback
 
-  useEffect(() => {
-    if (!userInfo || !userInfo.token) {
-      navigate('/login');
-      return;
-    }
-    fetchEmployeeDetails();
-    if (isAdmin || isManager) { // Only HR or managers need to fetch managers for editing
-        fetchManagers();
-    }
-  }, [navigate, userInfo?.token, id, isAdmin, isManager]);
-
-  const fetchEmployeeDetails = async () => {
+  const fetchEmployeeDetails = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
         },
       };
       const { data } = await axios.get(`${API_BASE_URL}/api/employees/${id}`, config);
       setEmployee(data);
-      // Pre-fill form data for editing (format date for input[type="date"])
       setFormData({
         ...data,
         dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining).toISOString().split('T')[0] : '',
-        manager: data.manager?._id || '', // Set manager ID if exists, otherwise empty string
+        manager: data.manager?._id || '',
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employee details.');
       console.error('Error fetching employee:', err);
       if (err.response?.status === 401 || err.response?.status === 403 || err.response?.status === 404) {
-        navigate(err.response?.status === 404 ? '/employees' : '/login'); // Redirect based on error
+        navigate(err.response?.status === 404 ? '/employees' : '/login');
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL, id, userInfo?.token, navigate]);
 
-  const fetchManagers = async () => {
+  const fetchManagers = useCallback(async () => {
     setFetchManagersLoading(true);
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
         },
       };
-      const { data } = await axios.get('${API_BASE_URL}/api/auth/users', config);
+      const { data } = await axios.get(`${API_BASE_URL}/api/auth/users`, config);
       const validManagers = data.filter(user => user.role === 'manager' || user.role === 'hr_admin');
       setManagers(validManagers);
     } catch (err) {
@@ -87,7 +79,19 @@ function EmployeeDetailsPage() {
     } finally {
       setFetchManagersLoading(false);
     }
-  };
+  }, [API_BASE_URL, userInfo?.token]);
+
+
+  useEffect(() => {
+    if (!userInfo || !userInfo.token) {
+      navigate('/login');
+      return;
+    }
+    fetchEmployeeDetails();
+    if (isAdmin) {
+        fetchManagers();
+    }
+  }, [navigate, userInfo, id, isAdmin, fetchEmployeeDetails, fetchManagers]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -104,15 +108,15 @@ function EmployeeDetailsPage() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo.token}`,
+          Authorization: `Bearer ${userInfo?.token}`,
           'Content-Type': 'application/json',
         },
       };
-      // Only send updated fields, or all fields if isEditMode is true
       const { data } = await axios.put(`${API_BASE_URL}/api/employees/${id}`, formData, config);
-      setEmployee(data); // Update displayed employee data
+      setEmployee(data);
       setSuccess('Employee details updated successfully!');
-      setIsEditMode(false); // Exit edit mode
+      setIsEditMode(false);
+      fetchEmployeeDetails(); // Re-fetch to ensure all displayed data is fresh
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update employee details.');
       console.error('Error updating employee:', err);
@@ -129,7 +133,15 @@ function EmployeeDetailsPage() {
     );
   }
 
-  if (error && !employee) { // Show error if initial fetch failed and no employee data
+  if (!userInfo) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
+          <CircularProgress />
+        </Box>
+      );
+  }
+
+  if (error && !employee) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
         <Alert severity="error">{error}</Alert>
@@ -137,7 +149,7 @@ function EmployeeDetailsPage() {
     );
   }
 
-  if (!employee) { // Should not happen if loading handled, but as a fallback
+  if (!employee) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', bgcolor: theme.palette.background.default }}>
         <Alert severity="info">No employee data available.</Alert>
@@ -145,9 +157,8 @@ function EmployeeDetailsPage() {
     );
   }
 
-  // Determine if the current user has permission to view/edit this profile based on role
   const canView = isAdmin || isManager || isSelf;
-  const canEdit = isAdmin; // Only HR Admin can edit all fields
+  const canEdit = isAdmin;
 
   if (!canView) {
     return (
@@ -201,6 +212,7 @@ function EmployeeDetailsPage() {
               <Typography variant="h6" color="primary.main" gutterBottom sx={{ mt: 2 }}>
                 Employment Details
               </Typography>
+              {/* REMOVED THE EXTRA CLOSING </Typography> TAG HERE */}
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">Date of Joining:</Typography>
@@ -227,7 +239,7 @@ function EmployeeDetailsPage() {
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">Manager:</Typography>
               <Typography variant="body1">
-                {employee.manager ? `<span class="math-inline">\{employee\.manager\.name\} \(</span>{employee.manager.email})` : 'N/A'}
+                {employee.manager ? `${employee.manager.name} (${employee.manager.email})` : 'N/A'}
               </Typography>
             </Grid>
 
